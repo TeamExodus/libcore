@@ -50,6 +50,7 @@ jobject sockaddrToInetAddress(JNIEnv* env, const sockaddr_storage& ss, jint* por
     size_t addressLength;
     int sin_port = 0;
     int scope_id = 0;
+
     if (ss.ss_family == AF_INET) {
         const sockaddr_in& sin = reinterpret_cast<const sockaddr_in&>(ss);
         rawAddress = &sin.sin_addr.s_addr;

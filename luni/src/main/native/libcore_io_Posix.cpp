@@ -458,7 +458,10 @@ private:
 };
 
 static jobject Posix_accept(JNIEnv* env, jobject, jobject javaFd, jobject javaInetSocketAddress) {
-    sockaddr_storage ss;
+    union {
+        sockaddr_storage ss;
+        sockaddr sa;
+    };
     socklen_t sl = sizeof(ss);
     memset(&ss, 0, sizeof(ss));
     sockaddr* peer = (javaInetSocketAddress != NULL) ? reinterpret_cast<sockaddr*>(&ss) : NULL;
@@ -804,12 +807,15 @@ static jint Posix_getsockoptByte(JNIEnv* env, jobject, jobject javaFd, jint leve
 
 static jobject Posix_getsockoptInAddr(JNIEnv* env, jobject, jobject javaFd, jint level, jint option) {
     int fd = jniGetFDFromFileDescriptor(env, javaFd);
-    sockaddr_storage ss;
+    union {
+        sockaddr_storage ss;
+        sockaddr_in in;
+        sockaddr sa;
+    };
     memset(&ss, 0, sizeof(ss));
     ss.ss_family = AF_INET; // This is only for the IPv4-only IP_MULTICAST_IF.
-    sockaddr_in* sa = reinterpret_cast<sockaddr_in*>(&ss);
-    socklen_t size = sizeof(sa->sin_addr);
-    int rc = TEMP_FAILURE_RETRY(getsockopt(fd, level, option, &sa->sin_addr, &size));
+    socklen_t size = sizeof(in.sin_addr);
+    int rc = TEMP_FAILURE_RETRY(getsockopt(fd, level, option, &in.sin_addr, &size));
     if (rc == -1) {
         throwErrnoException(env, "getsockopt");
         return NULL;
@@ -896,10 +902,13 @@ static jobject Posix_inet_pton(JNIEnv* env, jobject, jint family, jstring javaNa
     if (name.c_str() == NULL) {
         return NULL;
     }
-    sockaddr_storage ss;
+    union {
+        sockaddr_storage ss;
+        sockaddr_in in;
+    };
     memset(&ss, 0, sizeof(ss));
     // sockaddr_in and sockaddr_in6 are at the same address, so we can use either here.
-    void* dst = &reinterpret_cast<sockaddr_in*>(&ss)->sin_addr;
+    void* dst = &in.sin_addr;
     if (inet_pton(family, name.c_str(), dst) != 1) {
         return NULL;
     }
@@ -1187,7 +1196,10 @@ static jint Posix_recvfromBytes(JNIEnv* env, jobject, jobject javaFd, jobject ja
     if (bytes.get() == NULL) {
         return -1;
     }
-    sockaddr_storage ss;
+    union {
+        sockaddr_storage ss;
+        sockaddr sa;
+    };
     socklen_t sl = sizeof(ss);
     memset(&ss, 0, sizeof(ss));
     sockaddr* from = (javaInetSocketAddress != NULL) ? reinterpret_cast<sockaddr*>(&ss) : NULL;
